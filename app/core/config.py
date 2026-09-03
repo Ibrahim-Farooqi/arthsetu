@@ -46,7 +46,7 @@ class Settings(BaseSettings):
 
     @property
     def SUPABASE_AUTH_ENABLED(self) -> bool:
-        return bool(self.SUPABASE_JWT_SECRET)
+        return bool(self.SUPABASE_URL or self.SUPABASE_JWT_SECRET)
 
     # --- CORS ---
     # Include your Vercel deployment URL(s) here (production + preview),

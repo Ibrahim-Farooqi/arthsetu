@@ -439,7 +439,7 @@ export const MarketsCenter: React.FC<MarketsCenterProps> = ({
           <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm">
             <h3 className="font-extrabold text-slate-900 text-lg mb-4">52-Week High & Low Breakouts</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {STOCKS_DATABASE.map(stock => (
+              {liveStocks.map((stock: any) => (
                 <div 
                   key={stock.symbol}
                   onClick={() => onSelectStock(stock)}

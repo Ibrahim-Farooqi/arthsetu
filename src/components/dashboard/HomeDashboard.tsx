@@ -354,12 +354,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             ref={secondaryIndicesRef}
             className="flex items-center gap-6 overflow-x-auto scrollbar-none pb-2 pt-1 snap-x scroll-smooth"
           >
-            {secondaryIndices.map((idx) => (
+            {secondaryIndices.map((idx, index) => (
               <div
                 key={idx.name}
                 onClick={() => onSelectStock && onSelectStock({ symbol: idx.name, name: `${idx.name} Index`, price: idx.value })}
                 className={`shrink-0 snap-start flex items-center gap-4 cursor-pointer group pr-6 ${
-                  index !== SECONDARY_INDICES.length - 1 ? 'border-r border-slate-200' : ''
+                  index !== secondaryIndices.length - 1 ? 'border-r border-slate-200' : ''
                 }`}
               >
                 <div className="space-y-0.5 min-w-[140px]">

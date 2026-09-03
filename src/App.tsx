@@ -23,39 +23,37 @@ import { OnboardingFlowContainer } from './pages/onboarding/OnboardingFlowContai
 
 function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/products" element={<ProductsPage />} />
-            <Route path="/ai-research" element={<AiResearchPage />} />
-            <Route path="/pricing" element={<PricingPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/register" element={<SignUp />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/products" element={<ProductsPage />} />
+          <Route path="/ai-research" element={<AiResearchPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/register" element={<SignUp />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
-            {/* Protected Routes (Now Public) */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<DashboardLayout />} />
-              <Route path="/pricing" element={<DashboardLayout><Pricing /></DashboardLayout>} />
-              <Route path="/analyst" element={<DashboardLayout><AnalystDashboard /></DashboardLayout>} />
-              <Route path="/personalization" element={<InvestorPersonalization />} />
-              <Route path="/onboarding" element={<OnboardingFlowContainer />} />
-            </Route>
-            
-            {/* Fallback redirect */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </ThemeProvider>
-    </AuthProvider>
+          {/* Protected Routes (Now Public) */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<DashboardLayout />} />
+            <Route path="/pricing" element={<DashboardLayout><Pricing /></DashboardLayout>} />
+            <Route path="/analyst" element={<DashboardLayout><AnalystDashboard /></DashboardLayout>} />
+            <Route path="/personalization" element={<InvestorPersonalization />} />
+            <Route path="/onboarding" element={<OnboardingFlowContainer />} />
+          </Route>
+          
+          {/* Fallback redirect */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

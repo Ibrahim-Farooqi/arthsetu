@@ -33,10 +33,12 @@ async def list_or_search_stocks(
 
     # Fallback to universe if DB has no stocks seeded yet
     if not stocks:
-        universe = provider.get_universe()
+        universe = provider.get_universe()[:limit]
+        symbols = [s.symbol for s in universe]
+        quotes_map = provider.get_quotes_bulk(symbols)
         out = []
-        for s in universe[:limit]:
-            price, change = provider.get_quote(s.symbol, s.base_price)
+        for s in universe:
+            price, change = quotes_map.get(s.symbol, (s.base_price, 0.0))
             out.append(
                 StockOut(
                     id=s.symbol.lower(),
@@ -50,9 +52,11 @@ async def list_or_search_stocks(
             )
         return out
 
+    symbols = [s.symbol for s in stocks]
+    quotes_map = provider.get_quotes_bulk(symbols)
     out = []
     for s in stocks:
-        price, change = provider.get_quote(s.symbol, s.last_price)
+        price, change = quotes_map.get(s.symbol, (s.last_price, 0.0))
         out.append(
             StockOut(
                 id=s.id,

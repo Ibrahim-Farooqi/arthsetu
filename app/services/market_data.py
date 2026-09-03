@@ -71,12 +71,20 @@ class MarketDataProvider(ABC):
         """Return OHLCV candles, most recent last."""
 
 
+GROWW_SYMBOL_ALIASES: dict[str, str] = {
+    "TATAMOTORS": "TMPV",
+    "ZOMATO": "ETERNAL",
+}
+
+
 class GrowwMarketDataProvider(MarketDataProvider):
     """Real live market data fetched directly from Groww API."""
 
     def __init__(self):
         self._quote_cache: dict[str, tuple[float, dict]] = {}  # symbol -> (timestamp, data)
+        self._indices_cache: tuple[float, list[dict]] | None = None
         self._cache_ttl = 10.0  # 10 second in-memory cache for high throughput
+        self._indices_cache_ttl = 15.0
         self._ssl_ctx = ssl._create_unverified_context()
 
     def _get_headers(self) -> dict[str, str]:
@@ -97,18 +105,62 @@ class GrowwMarketDataProvider(MarketDataProvider):
         if cached and (now - cached[0]) < self._cache_ttl:
             return cached[1]
 
-        url = f"https://groww.in/v1/api/stocks_data/v1/tr_live_prices/exchange/NSE/segment/CASH/{symbol}/latest"
+        groww_symbol = GROWW_SYMBOL_ALIASES.get(symbol, symbol)
+
+        # 1. Try real-time live prices endpoint
+        url = f"https://groww.in/v1/api/stocks_data/v1/tr_live_prices/exchange/NSE/segment/CASH/{groww_symbol}/latest"
         req = urllib.request.Request(url, headers=self._get_headers())
         try:
-            with urllib.request.urlopen(req, context=self._ssl_ctx, timeout=4) as res:
+            with urllib.request.urlopen(req, context=self._ssl_ctx, timeout=3) as res:
                 if res.status == 200:
                     data = json.loads(res.read().decode("utf-8"))
-                    self._quote_cache[symbol] = (now, data)
-                    return data
+                    if data and data.get("ltp") is not None:
+                        self._quote_cache[symbol] = (now, data)
+                        return data
         except Exception:
-            # Check if we have an older cached value
-            if cached:
-                return cached[1]
+            pass
+
+        # 2. Fallback to daily charting endpoint for stocks with different scrip routing
+        end_ms = int(now * 1000)
+        start_ms = end_ms - (3 * 24 * 60 * 60 * 1000)
+        chart_url = (
+            f"https://groww.in/v1/api/charting_service/v2/chart/exchange/NSE/segment/CASH/{groww_symbol}"
+            f"?endTimeInMillis={end_ms}&intervalInMinutes=1440&startTimeInMillis={start_ms}"
+        )
+        try:
+            req2 = urllib.request.Request(chart_url, headers=self._get_headers())
+            with urllib.request.urlopen(req2, context=self._ssl_ctx, timeout=3) as res2:
+                if res2.status == 200:
+                    payload = json.loads(res2.read().decode("utf-8"))
+                    candles = payload.get("candles") or []
+                    if candles:
+                        latest = candles[-1]
+                        prev = candles[-2] if len(candles) > 1 else latest
+                        ltp = float(latest[4])
+                        prev_close = float(prev[4])
+                        day_change = round(ltp - prev_close, 2)
+                        day_change_perc = round((day_change / prev_close) * 100, 2) if prev_close else 0.0
+                        synth_data = {
+                            "symbol": symbol,
+                            "ltp": ltp,
+                            "dayChange": day_change,
+                            "dayChangePerc": day_change_perc,
+                            "open": float(latest[1]),
+                            "high": float(latest[2]),
+                            "low": float(latest[3]),
+                            "close": prev_close,
+                            "volume": int(latest[5]) if len(latest) > 5 and latest[5] else 500000,
+                            "yearHighPrice": round(ltp * 1.25, 2),
+                            "yearLowPrice": round(ltp * 0.75, 2),
+                        }
+                        self._quote_cache[symbol] = (now, synth_data)
+                        return synth_data
+        except Exception:
+            pass
+
+        # Check if we have an older cached value
+        if cached:
+            return cached[1]
         return None
 
     def get_quote(self, symbol: str, base_price: float = 0.0) -> tuple[float, float]:
@@ -118,10 +170,15 @@ class GrowwMarketDataProvider(MarketDataProvider):
             change_pct = float(data.get("dayChangePerc") or 0.0)
             return round(ltp, 2), round(change_pct, 2)
 
-        # Fallback to seed base_price if offline
         fallback_stock = next((s for s in SEED_UNIVERSE if s.symbol == symbol), None)
         price = fallback_stock.base_price if fallback_stock else (base_price or 100.0)
         return price, 0.0
+
+    def get_quotes_bulk(self, symbols: list[str]) -> dict[str, tuple[float, float]]:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            results = list(executor.map(self.get_quote, symbols))
+        return dict(zip(symbols, results))
 
     def get_live_quote(self, symbol: str) -> dict:
         data = self._fetch_groww_quote(symbol)
@@ -144,7 +201,6 @@ class GrowwMarketDataProvider(MarketDataProvider):
                 "fiftyTwoWeekLow": float(data.get("yearLowPrice") or ltp * 0.8),
             }
 
-        # Fallback dictionary
         price, change = self.get_quote(symbol)
         return {
             "symbol": symbol,
@@ -164,8 +220,9 @@ class GrowwMarketDataProvider(MarketDataProvider):
     def get_candles(self, symbol: str, base_price: float = 0.0, count: int = 60) -> list[dict]:
         end_ms = int(time.time() * 1000)
         start_ms = end_ms - (count * 24 * 60 * 60 * 1000)
+        groww_symbol = GROWW_SYMBOL_ALIASES.get(symbol, symbol)
         url = (
-            f"https://groww.in/v1/api/charting_service/v2/chart/exchange/NSE/segment/CASH/{symbol}"
+            f"https://groww.in/v1/api/charting_service/v2/chart/exchange/NSE/segment/CASH/{groww_symbol}"
             f"?endTimeInMillis={end_ms}&intervalInMinutes=1440&startTimeInMillis={start_ms}"
         )
         req = urllib.request.Request(url, headers=self._get_headers())
@@ -176,7 +233,6 @@ class GrowwMarketDataProvider(MarketDataProvider):
                     raw_candles = payload.get("candles") or []
                     candles = []
                     for c in raw_candles[-count:]:
-                        # Format: [timestamp_seconds, open, high, low, close, volume]
                         ts = datetime.fromtimestamp(c[0], tz=timezone.utc)
                         candles.append(
                             {
@@ -185,7 +241,7 @@ class GrowwMarketDataProvider(MarketDataProvider):
                                 "high": round(float(c[2]), 2),
                                 "low": round(float(c[3]), 2),
                                 "close": round(float(c[4]), 2),
-                                "volume": int(c[5]) if len(c) > 5 else 0,
+                                "volume": int(c[5]) if len(c) > 5 and c[5] is not None else 0,
                             }
                         )
                     if candles:
@@ -193,7 +249,6 @@ class GrowwMarketDataProvider(MarketDataProvider):
         except Exception:
             pass
 
-        # Fallback candle generation if external API fails
         price, _ = self.get_quote(symbol, base_price)
         now = datetime.now(timezone.utc)
         fallback = []
@@ -237,36 +292,58 @@ class GrowwMarketDataProvider(MarketDataProvider):
         return []
 
     def get_market_indices(self) -> list[dict]:
-        indices = [
-            {"symbol": "NIFTY", "name": "NIFTY 50", "exchange": "NSE", "base": 24820.0},
-            {"symbol": "BANKNIFTY", "name": "BANK NIFTY", "exchange": "NSE", "base": 52140.0},
-            {"symbol": "SENSEX", "name": "SENSEX", "exchange": "BSE", "base": 81380.0},
-            {"symbol": "NIFTY IT", "name": "NIFTY IT", "exchange": "NSE", "base": 35200.0},
-            {"symbol": "NIFTY AUTO", "name": "NIFTY AUTO", "exchange": "NSE", "base": 26410.0},
-            {"symbol": "NIFTY PHARMA", "name": "NIFTY PHARMA", "exchange": "NSE", "base": 22980.0},
+        now = time.time()
+        if self._indices_cache and (now - self._indices_cache[0]) < self._indices_cache_ttl:
+            return self._indices_cache[1]
+
+        end_ms = int(now * 1000)
+        start_ms = end_ms - (24 * 60 * 60 * 1000)
+
+        index_configs = [
+            ("NIFTY 50", "NIFTY", "NSE", "NIFTY", 23873.45),
+            ("BANK NIFTY", "BANKNIFTY", "NSE", "BANKNIFTY", 57380.60),
+            ("SENSEX", "SENSEX", "BSE", "SENSEX", 76152.86),
+            ("NIFTY IT", "NIFTY IT", "NSE", "NIFTYIT", 30838.85),
+            ("NIFTY AUTO", "NIFTY AUTO", "NSE", "NIFTYAUTO", 27837.20),
+            ("NIFTY PHARMA", "NIFTY PHARMA", "NSE", "NIFTYPHARMA", 26660.55),
         ]
+
         out = []
-        for idx in indices:
-            data = self._fetch_groww_quote(idx["symbol"])
-            if data and data.get("ltp") is not None:
-                ltp = float(data["ltp"])
-                change = float(data.get("dayChange") or 0.0)
-                change_pct = float(data.get("dayChangePerc") or 0.0)
-            else:
-                ltp = idx["base"]
-                change = 0.0
-                change_pct = 0.0
+        for name, sym, exchange, chart_sym, base in index_configs:
+            url = (
+                f"https://groww.in/v1/api/charting_service/v2/chart/exchange/{exchange}/segment/CASH/{chart_sym}"
+                f"?endTimeInMillis={end_ms}&intervalInMinutes=5&startTimeInMillis={start_ms}"
+            )
+            ltp = base
+            change = 0.0
+            change_pct = 0.0
+            try:
+                req = urllib.request.Request(url, headers=self._get_headers())
+                with urllib.request.urlopen(req, context=self._ssl_ctx, timeout=3) as res:
+                    if res.status == 200:
+                        payload = json.loads(res.read().decode("utf-8"))
+                        candles = payload.get("candles") or []
+                        if candles:
+                            ltp = float(candles[-1][4])
+                            first_open = float(candles[0][1])
+                            change = round(ltp - first_open, 2)
+                            change_pct = round((change / first_open) * 100, 2)
+            except Exception:
+                pass
+
             out.append(
                 {
-                    "name": idx["name"],
-                    "symbol": idx["symbol"],
-                    "exchange": idx["exchange"],
+                    "name": name,
+                    "symbol": sym,
+                    "exchange": exchange,
                     "value": round(ltp, 2),
                     "change": round(change, 2),
                     "changePercent": round(change_pct, 2),
                     "isPositive": change >= 0,
                 }
             )
+
+        self._indices_cache = (now, out)
         return out
 
 
