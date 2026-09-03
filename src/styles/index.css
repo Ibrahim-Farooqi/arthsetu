@@ -1,0 +1,201 @@
+@import "./design-tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans antialiased transition-colors duration-200;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+  }
+
+  /* Smooth scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 dark:bg-slate-700 rounded-full hover:bg-slate-400 dark:hover:bg-slate-600;
+  }
+
+  /* Focus States */
+  button:focus-visible, a:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-white dark:ring-offset-dark-bg;
+  }
+
+  input, textarea {
+    outline: none !important;
+  }
+
+@layer components {
+  /* Premium Glassmorphism Container */
+  .glass-panel {
+    @apply bg-white/80 dark:bg-dark-card/80 backdrop-blur-md border border-brand-border dark:border-dark-border;
+  }
+
+  /* Subtly animated gradient border */
+  .gradient-border {
+    position: relative;
+    border-radius: var(--radius-card);
+    background: linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+                linear-gradient(135deg, var(--primary), var(--navy)) border-box;
+    border: 1px solid transparent;
+  }
+
+  /* ─── Brand Button System ───────────────────────────────── */
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+    border-radius: var(--radius-button);
+    font-weight: 600;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .btn-primary:hover {
+    background: var(--primary-hover);
+    box-shadow: 0 6px 20px -4px rgba(21, 81, 157, 0.35);
+  }
+
+  .btn-navy {
+    background: var(--navy);
+    color: #fff;
+    border-radius: var(--radius-button);
+    font-weight: 600;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .btn-navy:hover {
+    background: var(--navy-hover);
+    box-shadow: 0 6px 20px -4px rgba(18, 59, 99, 0.35);
+  }
+
+  .btn-secondary {
+    background: var(--secondary-light);
+    color: var(--secondary);
+    border-radius: var(--radius-button);
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+  .btn-secondary:hover {
+    background: #E2E8F0;
+  }
+
+  .btn-ghost-primary {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary-mid);
+    border-radius: var(--radius-button);
+    font-weight: 600;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .btn-ghost-primary:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+  }
+
+  /* ─── Hover / Selected States ───────────────────────────── */
+  .hover-brand:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+
+  .selected-brand {
+    background: var(--primary);
+    color: #fff;
+  }
+
+  .selected-brand-light {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+
+  /* ─── Tab Pill System ───────────────────────────────────── */
+  .tab-pill {
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--secondary);
+    background: transparent;
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+  }
+  .tab-pill:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  .tab-pill.active {
+    background: var(--primary);
+    color: #fff;
+  }
+
+  /* ─── Badge ─────────────────────────────────────────────── */
+  .badge-primary {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid var(--primary-mid);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+  }
+
+  .badge-navy {
+    background: #E2E8F0;
+    color: var(--navy);
+    border: 1px solid #CBD5E1;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+  }
+
+  .badge-secondary {
+    background: var(--secondary-light);
+    color: var(--secondary);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+  }
+
+  /* ─── Input focus ───────────────────────────────────────── */
+  .input-brand:focus {
+    outline: none;
+    border-color: var(--primary-mid);
+    box-shadow: 0 0 0 3px var(--primary-light);
+  }
+}
+
+@layer utilities {
+  .univest-hero { position: relative; isolation: isolate; }
+  .hero-grid { position: absolute; inset: 0; z-index: 0; opacity: .25; background-image: linear-gradient(rgba(21, 81, 157, .1) 1px, transparent 1px), linear-gradient(90deg, rgba(21, 81, 157, .1) 1px, transparent 1px); background-size: 66px 66px; mask-image: linear-gradient(to bottom, black, transparent 86%); }
+  .hero-glow { position: absolute; z-index: 0; pointer-events: none; border-radius: 9999px; filter: blur(110px); }
+  .hero-glow-one { width: 40rem; height: 34rem; right: -12rem; top: 4rem; background: rgba(21, 81, 157, .15); }
+  .hero-glow-two { width: 30rem; height: 20rem; left: -14rem; bottom: -10rem; background: rgba(18, 59, 99, .12); }
+  .hero-gradient-text { background: linear-gradient(105deg, #172033 10%, #15519D 49%, #123B63 85%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  
+  @keyframes marquee {
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee 22s linear infinite;
+  }
+
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+}

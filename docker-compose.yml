@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: arthsetu
+      POSTGRES_PASSWORD: arthsetu
+      POSTGRES_DB: arthsetu
+    ports:
+      - "5432:5432"
+    volumes:
+      - arthsetu_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arthsetu"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://arthsetu:arthsetu@db:5432/arthsetu
+      SECRET_KEY: CHANGE_ME_IN_PRODUCTION_use_a_long_random_value
+      ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  arthsetu_pgdata:

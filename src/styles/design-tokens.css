@@ -1,0 +1,80 @@
+﻿:root {
+  /* ─── Brand Palette — Deep Financial Blue & Dark Navy ──── */
+  --primary: #15519D;
+  --primary-hover: #104280;
+  --primary-light: #EBF3FC;
+  --primary-mid: #B3D4F5;
+  --primary-glow: rgba(21, 81, 157, 0.18);
+
+  --navy: #123B63;
+  --navy-hover: #0E2F50;
+
+  --secondary: #64748B;
+  --secondary-light: #F1F5F9;
+  --secondary-hover: #475569;
+
+  --success: #16A34A;
+  --success-light: #DCFCE7;
+  --success-hover: #15803D;
+  --success-glow: rgba(22, 163, 74, 0.15);
+
+  --danger: #DC2626;
+  --danger-light: #FEE2E2;
+  --danger-hover: #B91C1C;
+  --danger-glow: rgba(220, 38, 38, 0.15);
+
+  --warning: #F59E0B;
+  --warning-hover: #F59E0B;
+
+  --info: #0EA5E9;
+
+  /* ─── Layout ───────────────────────────────────────────── */
+  --bg-app: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --border-app: #E2E8F0;
+
+  /* ─── Text ─────────────────────────────────────────────── */
+  --text-primary: #172033;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+
+  /* ─── Corner Radius ────────────────────────────────────── */
+  --radius-card: 20px;
+  --radius-button: 14px;
+  --radius-input: 14px;
+  --radius-modal: 24px;
+  --radius-chart: 16px;
+
+  /* ─── Spacing (8pt) ────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ─── Shadows ──────────────────────────────────────────── */
+  --shadow-card: 0 8px 28px -4px rgba(23, 32, 51, 0.05), 0 2px 8px -2px rgba(23, 32, 51, 0.03);
+  --shadow-modal: 0 20px 48px -6px rgba(23, 32, 51, 0.08), 0 8px 24px -4px rgba(23, 32, 51, 0.04);
+}
+
+.dark {
+  --primary: #2B7BE4;
+  --primary-hover: #15519D;
+  --primary-light: #0D2746;
+  --primary-mid: #123B63;
+  --navy: #F8FAFC;
+  --bg-app: #0B0F19;
+  --bg-card: #161F30;
+  --border-app: #243249;
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --shadow-card: 0 12px 34px -4px rgba(0, 0, 0, 0.35), 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+  --shadow-modal: 0 20px 48px -6px rgba(0, 0, 0, 0.5), 0 8px 24px -4px rgba(0, 0, 0, 0.3);
+}
