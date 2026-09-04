@@ -5,13 +5,61 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.models.market import Stock
+from app.models.market import Stock, MarketOutlook, SectorPerformance
 from app.schemas.market import CandleOut, StockDetailOut, StockOut
 from app.services.market_data import get_market_data_provider
 from app.services.research import get_stock_research
+import json
 
 router = APIRouter(prefix="/market", tags=["Market"])
 provider = get_market_data_provider()
+
+@router.get("/outlook")
+async def get_market_outlook(db: AsyncSession = Depends(get_db)):
+    """Fetch today's market outlook from the database."""
+    today_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    result = await db.execute(select(MarketOutlook).order_by(MarketOutlook.date.desc()).limit(1))
+    outlook = result.scalar_one_or_none()
+    if not outlook:
+        return None
+    return {
+        "niftyTrend": outlook.nifty_trend,
+        "niftySupport": outlook.nifty_support,
+        "niftyResistance": outlook.nifty_resistance,
+        "bankNiftyTrend": outlook.bank_nifty_trend,
+        "bankNiftySupport": outlook.bank_nifty_support,
+        "bankNiftyResistance": outlook.bank_nifty_resistance,
+        "vixValue": outlook.vix_value,
+        "vixChange": outlook.vix_change,
+        "fiiFlow": outlook.fii_flow,
+        "diiFlow": outlook.dii_flow,
+        "pcrRatio": outlook.pcr_ratio,
+        "marketSentiment": outlook.market_sentiment,
+        "keyEvents": json.loads(outlook.key_events_json)
+    }
+
+@router.get("/sectors")
+async def get_sectors(db: AsyncSession = Depends(get_db)):
+    """Fetch sector performances from the database."""
+    result = await db.execute(select(SectorPerformance))
+    sectors = result.scalars().all()
+    return [
+        {
+            "name": s.name,
+            "changePercent": s.change_percent,
+            "topGainer": s.top_gainer,
+            "gainerChange": s.gainer_change,
+            "topLoser": s.top_loser,
+            "loserChange": s.loser_change,
+            "marketCap": s.market_cap,
+            "volume": s.volume,
+            "momentumScore": s.momentum_score,
+            "trend": s.trend,
+            "rsi": s.rsi,
+            "capitalFlow": s.capital_flow
+        }
+        for s in sectors
+    ]
 
 
 @router.get("/stocks", response_model=list[StockOut])

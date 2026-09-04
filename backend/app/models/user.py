@@ -27,7 +27,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     full_name: Mapped[str] = mapped_column(String(120))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    mobile_number: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    mobile_number: Mapped[str | None] = mapped_column(String(20), unique=True, index=True, nullable=True)
     # Nullable: unused for Supabase-authenticated users, since Supabase Auth
     # owns credential storage. Only populated by the legacy local-JWT flow.
     hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)

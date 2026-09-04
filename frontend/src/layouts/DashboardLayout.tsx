@@ -25,6 +25,7 @@ import { UserMenuDropdown } from '../components/dashboard/UserMenuDropdown';
 import { PremiumPricingModal } from '../components/dashboard/PremiumPricingModal';
 import { AiCopilotModal } from '../components/ai/AiCopilotModal';
 import marketService from '../services/market.service';
+import watchlistService from '../services/watchlist.service';
 
 interface DashboardLayoutProps {
   children?: React.ReactNode;
@@ -49,8 +50,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     let isMounted = true;
     const loadWatchlist = async () => {
       try {
-        const stocks = await marketService.getStocks();
-        if (stocks && stocks.length > 0 && isMounted) {
+        const items = await watchlistService.getWatchlistItems();
+        if (items && items.length > 0 && isMounted) {
           const colors = [
             'bg-emerald-100 text-emerald-800',
             'bg-purple-100 text-purple-800',
@@ -60,15 +61,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             'bg-[#E0F2FE] text-[#15519D]',
             'bg-amber-100 text-amber-800',
           ];
-          const mapped = stocks.slice(0, 10).map((st, idx) => ({
-            symbol: st.symbol,
-            name: st.companyName,
-            price: st.lastPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-            changePercent: st.changePercent,
-            isPositive: st.changePercent >= 0,
+          const mapped = items.slice(0, 10).map((item: any, idx: number) => ({
+            symbol: item.stock.symbol,
+            name: item.stock.name,
+            price: item.stock.last_price?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0',
+            changePercent: item.stock.day_change_pct || 0,
+            isPositive: (item.stock.day_change_pct || 0) >= 0,
             badgeBg: colors[idx % colors.length],
           }));
           setLiveWatchlist(mapped);
+        } else if (isMounted) {
+          setLiveWatchlist([]);
         }
       } catch (e) {}
     };
@@ -86,6 +89,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     month: 'short',
     year: 'numeric',
   }).format(new Date());
+
+  // IST market hours: Pre-Open 9:00–9:15, Open 9:15–15:30, After Hours 15:30–18:00
+  const getMarketStatus = () => {
+    const now = new Date();
+    const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const day = ist.getDay(); // 0=Sun, 6=Sat
+    const h = ist.getHours();
+    const m = ist.getMinutes();
+    const totalMins = h * 60 + m;
+    if (day === 0 || day === 6) return 'closed';
+    if (totalMins >= 540 && totalMins < 555) return 'preopen';   // 9:00–9:15
+    if (totalMins >= 555 && totalMins < 930) return 'open';       // 9:15–15:30
+    if (totalMins >= 930 && totalMins < 1080) return 'afterhours'; // 15:30–18:00
+    return 'closed';
+  };
+  const marketStatus = getMarketStatus();
 
   const navTabs = [
     { name: 'Home', icon: <Home className="w-5 h-5" />, label: 'Home' },
@@ -188,10 +207,30 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             {/* Left Date & Market Open Indicator */}
             <div className="flex items-center gap-2.5 text-xs font-bold text-slate-500 shrink-0">
               <span className="font-extrabold text-slate-900 text-xs whitespace-nowrap">{todayFormatted}</span>
-              <span className="inline-flex items-center gap-1 font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full text-[11px] border border-emerald-200/60 whitespace-nowrap shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Market Open
-              </span>
+              {marketStatus === 'open' && (
+                <span className="inline-flex items-center gap-1 font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full text-[11px] border border-emerald-200/60 whitespace-nowrap shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Market Open
+                </span>
+              )}
+              {marketStatus === 'preopen' && (
+                <span className="inline-flex items-center gap-1 font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full text-[11px] border border-amber-200/60 whitespace-nowrap shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  Pre-Open
+                </span>
+              )}
+              {marketStatus === 'afterhours' && (
+                <span className="inline-flex items-center gap-1 font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full text-[11px] border border-blue-200/60 whitespace-nowrap shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                  After Hours
+                </span>
+              )}
+              {marketStatus === 'closed' && (
+                <span className="inline-flex items-center gap-1 font-extrabold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full text-[11px] border border-slate-200 whitespace-nowrap shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  Market Closed
+                </span>
+              )}
               <span className="text-slate-400 font-bold text-[10px] whitespace-nowrap hidden xl:inline">• NSE</span>
               <span className="text-slate-400 font-bold text-[10px] whitespace-nowrap hidden xl:inline">• BSE</span>
             </div>

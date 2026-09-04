@@ -300,36 +300,43 @@ class GrowwMarketDataProvider(MarketDataProvider):
         start_ms = end_ms - (24 * 60 * 60 * 1000)
 
         index_configs = [
-            ("NIFTY 50", "NIFTY", "NSE", "NIFTY", 23873.45),
-            ("BANK NIFTY", "BANKNIFTY", "NSE", "BANKNIFTY", 57380.60),
-            ("SENSEX", "SENSEX", "BSE", "SENSEX", 76152.86),
-            ("NIFTY IT", "NIFTY IT", "NSE", "NIFTYIT", 30838.85),
-            ("NIFTY AUTO", "NIFTY AUTO", "NSE", "NIFTYAUTO", 27837.20),
-            ("NIFTY PHARMA", "NIFTY PHARMA", "NSE", "NIFTYPHARMA", 26660.55),
+            ("NIFTY 50",    "NIFTY",       "NSE", "NIFTY"),
+            ("BANK NIFTY",  "BANKNIFTY",   "NSE", "BANKNIFTY"),
+            ("SENSEX",      "SENSEX",      "BSE", "SENSEX"),
+            ("NIFTY IT",    "NIFTY IT",    "NSE", "NIFTYIT"),
+            ("NIFTY AUTO",  "NIFTY AUTO",  "NSE", "NIFTYAUTO"),
+            ("NIFTY PHARMA","NIFTY PHARMA","NSE", "NIFTYPHARMA"),
         ]
 
         out = []
-        for name, sym, exchange, chart_sym, base in index_configs:
-            url = (
-                f"https://groww.in/v1/api/charting_service/v2/chart/exchange/{exchange}/segment/CASH/{chart_sym}"
-                f"?endTimeInMillis={end_ms}&intervalInMinutes=5&startTimeInMillis={start_ms}"
-            )
-            ltp = base
+        for name, sym, exchange, chart_sym in index_configs:
+            # Try 1-minute interval first (most granular intraday)
+            ltp = None
             change = 0.0
             change_pct = 0.0
-            try:
-                req = urllib.request.Request(url, headers=self._get_headers())
-                with urllib.request.urlopen(req, context=self._ssl_ctx, timeout=3) as res:
-                    if res.status == 200:
-                        payload = json.loads(res.read().decode("utf-8"))
-                        candles = payload.get("candles") or []
-                        if candles:
-                            ltp = float(candles[-1][4])
-                            first_open = float(candles[0][1])
-                            change = round(ltp - first_open, 2)
-                            change_pct = round((change / first_open) * 100, 2)
-            except Exception:
-                pass
+            for interval in [1, 5, 15]:
+                url = (
+                    f"https://groww.in/v1/api/charting_service/v2/chart/exchange/{exchange}/segment/CASH/{chart_sym}"
+                    f"?endTimeInMillis={end_ms}&intervalInMinutes={interval}&startTimeInMillis={start_ms}"
+                )
+                try:
+                    req = urllib.request.Request(url, headers=self._get_headers())
+                    with urllib.request.urlopen(req, context=self._ssl_ctx, timeout=5) as res:
+                        if res.status == 200:
+                            payload = json.loads(res.read().decode("utf-8"))
+                            candles = payload.get("candles") or []
+                            if candles and len(candles) >= 2:
+                                ltp = float(candles[-1][4])
+                                first_open = float(candles[0][1])
+                                change = round(ltp - first_open, 2)
+                                change_pct = round((change / first_open) * 100, 2) if first_open else 0.0
+                                break  # Got valid data, stop trying other intervals
+                except Exception:
+                    continue
+
+            if ltp is None:
+                # Skip this index if all intervals failed — don't return stale hardcoded data
+                continue
 
             out.append(
                 {

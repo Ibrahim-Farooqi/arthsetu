@@ -65,39 +65,35 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     }
   };
 
-  // Primary 3 indices from live data or live fallback
-  const niftyIndex = liveIndices.find(i => i.symbol === 'NIFTY' || i.name?.includes('NIFTY 50')) || {
-    name: 'NIFTY 50',
-    value: 24820.40,
-    change: 142.15,
-    changePercent: 0.58,
-    isPositive: true,
+  // Primary 3 indices from live data or 0s fallback
+  const mapIndex = (symbol: string, defaultName: string) => {
+    const found = liveIndices.find((i: any) => i.symbol === symbol || i.name?.includes(defaultName));
+    if (found) {
+      return {
+        name: found.name || defaultName,
+        value: found.lastPrice || 0,
+        change: found.change || 0,
+        changePercent: found.changePercent || 0,
+        isPositive: (found.changePercent || 0) >= 0,
+        symbol: found.symbol
+      };
+    }
+    return { name: defaultName, value: 0, change: 0, changePercent: 0, isPositive: true, symbol: '' };
   };
 
-  const sensexIndex = liveIndices.find(i => i.symbol === 'SENSEX') || {
-    name: 'SENSEX',
-    value: 81380.20,
-    change: 415.80,
-    changePercent: 0.51,
-    isPositive: true,
-  };
+  const niftyIndex = mapIndex('NIFTY', 'NIFTY 50');
+  const sensexIndex = mapIndex('SENSEX', 'SENSEX');
+  const bankNiftyIndex = mapIndex('BANKNIFTY', 'BANK NIFTY');
 
-  const bankNiftyIndex = liveIndices.find(i => i.symbol === 'BANKNIFTY' || i.name?.includes('BANK')) || {
-    name: 'BANK NIFTY',
-    value: 52140.75,
-    change: 290.40,
-    changePercent: 0.56,
-    isPositive: true,
-  };
-
-  // Secondary indices from liveIndices or derived from live sectors
-  const secondaryIndices = liveIndices.length > 3 ? liveIndices.slice(3) : [
-    { name: 'NIFTY IT', exchange: 'NSE', value: '35,248.15', changePercent: 1.28, changePoint: '+440.25', isPositive: true },
-    { name: 'NIFTY AUTO', exchange: 'NSE', value: '26,410.10', changePercent: -0.32, changePoint: '-85.50', isPositive: false },
-    { name: 'NIFTY PHARMA', exchange: 'NSE', value: '22,980.60', changePercent: 0.50, changePoint: '+115.30', isPositive: true },
-    { name: 'NIFTY FMCG', exchange: 'NSE', value: '58,210.00', changePercent: -0.18, changePoint: '-105.20', isPositive: false },
-    { name: 'NIFTY METAL', exchange: 'NSE', value: '8,421.20', changePercent: 0.90, changePoint: '+75.40', isPositive: true },
-  ];
+  // Secondary indices from liveIndices or empty
+  const secondaryIndices = liveIndices.length > 3 ? liveIndices.slice(3).map((idx: any) => ({
+    name: idx.name || idx.symbol,
+    exchange: 'NSE',
+    value: idx.lastPrice ? idx.lastPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '0',
+    changePercent: idx.changePercent || 0,
+    changePoint: idx.change > 0 ? `+${idx.change}` : `${idx.change}`,
+    isPositive: (idx.changePercent || 0) >= 0
+  })) : [];
 
   const colors = [
     'bg-emerald-100 text-emerald-800',
@@ -215,11 +211,31 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
             {/* Market Status */}
             <div className="flex flex-col border-l border-slate-200 pl-4">
-              <div className="flex items-center gap-1.5 text-slate-900 font-extrabold text-xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                <span>Market Open</span>
-              </div>
-              <span className="text-[11px] font-medium text-slate-400">10:45 AM IST</span>
+              {(() => {
+                const now = new Date();
+                const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+                const day = ist.getDay();
+                const h = ist.getHours();
+                const m = ist.getMinutes();
+                const totalMins = h * 60 + m;
+                const timeStr = ist.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase();
+                let status = 'closed', label = 'Market Closed', dotClass = 'bg-slate-400', pingClass = '';
+                if (day !== 0 && day !== 6) {
+                  if (totalMins >= 540 && totalMins < 555) { status = 'preopen'; label = 'Pre-Open'; dotClass = 'bg-amber-500'; pingClass = 'animate-ping'; }
+                  else if (totalMins >= 555 && totalMins < 930) { status = 'open'; label = 'Market Open'; dotClass = 'bg-emerald-500'; pingClass = 'animate-ping'; }
+                  else if (totalMins >= 930 && totalMins < 1080) { status = 'afterhours'; label = 'After Hours'; dotClass = 'bg-blue-400'; pingClass = ''; }
+                }
+                const textColor = status === 'open' ? 'text-emerald-700' : status === 'preopen' ? 'text-amber-700' : status === 'afterhours' ? 'text-blue-700' : 'text-slate-500';
+                return (
+                  <>
+                    <div className={`flex items-center gap-1.5 font-extrabold text-xs ${textColor}`}>
+                      <span className={`w-2 h-2 rounded-full ${dotClass} ${pingClass}`} />
+                      <span>{label}</span>
+                    </div>
+                    <span className="text-[11px] font-medium text-slate-400">{timeStr} IST</span>
+                  </>
+                );
+              })()}
             </div>
 
             <div className="h-8 w-px bg-slate-200 hidden lg:block" />

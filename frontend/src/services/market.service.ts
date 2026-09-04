@@ -219,25 +219,25 @@ class MarketService {
       return response.data.map((call: any) => ({
         id: call.id,
         symbol: call.symbol,
-        companyName: call.company_name || call.symbol,
-        sector: call.sector || 'Uncategorized',
-        exchange: call.exchange || 'NSE',
-        recommendation: call.recommendation || 'HOLD',
+        companyName: call.company_name,
+        sector: call.sector,
+        exchange: call.exchange,
+        recommendation: call.recommendation,
         entryRange: `₹${call.entry_price_min} - ₹${call.entry_price_max}`,
         targetPrice: call.target_price,
         stopLoss: call.stop_loss,
         currentPrice: call.entry_price_min, // Fallback; websockets update this
         potentialReturn: ((call.target_price - call.entry_price_max) / call.entry_price_max) * 100,
-        riskLevel: call.risk_level || 'Medium',
-        confidenceScore: call.confidence_score || 80,
-        horizon: call.horizon || 'Short Term',
-        summary: call.analysis_summary || '',
-        thesis: call.analysis_summary || '',
-        status: call.status || 'ACTIVE',
-        publishedTime: call.published_at || new Date().toISOString(),
-        analyst: 'Univest Research',
-        analystAccuracy: '85% Win Rate',
-        technicals: { rsi: 55, macd: 'Bullish', trend: 'Up' }
+        riskLevel: call.risk_level,
+        confidenceScore: call.confidence_score,
+        horizon: call.horizon,
+        summary: call.analysis_summary,
+        thesis: call.analysis_summary,
+        status: call.status,
+        publishedTime: call.published_at,
+        analyst: call.analyst_name,
+        analystAccuracy: call.analyst_accuracy,
+        technicals: call.technicals
       }));
     } catch (error) {
       console.error('Failed to fetch research calls', error);
@@ -246,75 +246,27 @@ class MarketService {
   }
 
   /**
-   * Fetch sector performance
+   * Fetch sector performance from the database
    */
   async getSectors(): Promise<SectorData[]> {
     try {
-      // Since backend doesn't have a dedicated sector endpoint, we'll fetch sector indices
-      const sectorIndices = ['NIFTY IT', 'NIFTY BANK', 'NIFTY AUTO', 'NIFTY PHARMA', 'NIFTY FMCG', 'NIFTY METAL'];
-      const data = await this.getBatchQuotes(sectorIndices);
-      
-      const sectors: SectorData[] = [];
-      for (const [symbol, quote] of Object.entries(data)) {
-        if (!quote || quote.error) continue;
-        
-        sectors.push({
-          name: symbol.replace('NIFTY ', ''),
-          changePercent: quote.changePercent || 0,
-          topGainer: 'TCS', // Placeholder as we don't fetch components
-          gainerChange: 2.5,
-          topLoser: 'WIPRO',
-          loserChange: -1.2,
-          marketCap: 'Large',
-          volume: quote.volume?.toString() || '0',
-          momentumScore: (quote.changePercent || 0) > 0 ? 80 : 40,
-          trend: (quote.changePercent || 0) > 0 ? 'Bullish' : 'Bearish',
-          rsi: 55 + (quote.changePercent || 0),
-          capitalFlow: (quote.changePercent || 0) > 0 ? 'Inflow' : 'Outflow'
-        });
-      }
-      
-      return sectors.length > 0 ? sectors : [
-        { name: 'IT', changePercent: 1.2, topGainer: 'TCS', gainerChange: 2.5, topLoser: 'WIPRO', loserChange: -1.2, marketCap: 'Large', volume: '10M', momentumScore: 80, trend: 'Bullish', rsi: 65, capitalFlow: 'Inflow' },
-        { name: 'BANK', changePercent: -0.5, topGainer: 'HDFCBANK', gainerChange: 1.1, topLoser: 'SBIN', loserChange: -2.1, marketCap: 'Large', volume: '25M', momentumScore: 40, trend: 'Bearish', rsi: 45, capitalFlow: 'Outflow' }
-      ];
+      const response = await api.get('/market/sectors');
+      return response.data;
     } catch (e) {
-      console.error('Failed to fetch sectors', e);
+      console.error('Failed to fetch sectors from DB', e);
       return [];
     }
   }
 
   /**
-   * Fetch daily market outlook
+   * Fetch daily market outlook from the database
    */
   async getMarketOutlook(): Promise<MarketOutlookData | null> {
     try {
-      const data = await this.getBatchQuotes(['NIFTY 50', 'NIFTY BANK', 'INDIA VIX']);
-      
-      const nifty = data['NIFTY 50'] || { lastPrice: 24000, changePercent: 0 };
-      const bankNifty = data['NIFTY BANK'] || { lastPrice: 50000, changePercent: 0 };
-      const vix = data['INDIA VIX'] || { lastPrice: 15, change: 0 };
-      
-      return {
-        niftyTrend: nifty.changePercent > 0 ? 'Bullish' : 'Bearish',
-        niftySupport: nifty.lastPrice * 0.98,
-        niftyResistance: nifty.lastPrice * 1.02,
-        bankNiftyTrend: bankNifty.changePercent > 0 ? 'Bullish' : 'Bearish',
-        bankNiftySupport: bankNifty.lastPrice * 0.98,
-        bankNiftyResistance: bankNifty.lastPrice * 1.02,
-        vixValue: vix.lastPrice,
-        vixChange: vix.change || vix.changePercent || 0,
-        fiiFlow: 'Net Buy ₹1,200 Cr', // Mock FII data as it requires a specialized API
-        diiFlow: 'Net Sell ₹400 Cr',
-        pcrRatio: 1.1,
-        marketSentiment: nifty.changePercent > 0.5 ? 'Bullish' : (nifty.changePercent < -0.5 ? 'Bearish' : 'Neutral'),
-        keyEvents: [
-          { title: 'RBI Monetary Policy', date: 'Tomorrow', impact: 'High' },
-          { title: 'US CPI Data', date: 'Thursday', impact: 'High' }
-        ]
-      };
+      const response = await api.get('/market/outlook');
+      return response.data;
     } catch (e) {
-      console.error('Failed to fetch market outlook', e);
+      console.error('Failed to fetch market outlook from DB', e);
       return null;
     }
   }
